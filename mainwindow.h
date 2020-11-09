@@ -1,11 +1,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
-#include <QtCore>
-#include <QtNetwork>
-
 #include "ui_mainwindow.h"
+#include <QMainWindow>
+
 #include "MQTTClient.h"
 
 QT_BEGIN_NAMESPACE
@@ -30,18 +28,12 @@ public:
 
 private slots:
     void on_pushButton_connect_clicked();
-
     void on_pushButton_send_clicked();
-
-    void on_listWidget_topicList_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
-
+    void on_listWidget_topic_list_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous);
     void on_MainWindow_destroyed();
+    QString getPayloadAsJson();
 
 private:
     Ui::MainWindow *ui;
-    void connToHost(QString hostname);
-    void initEnv();
-
-    QTcpSocket *socket;
 };
 #endif // MAINWINDOW_H
