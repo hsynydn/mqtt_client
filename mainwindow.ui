@@ -180,42 +180,42 @@
        <item>
         <layout class="QHBoxLayout" name="layout_moisture_info">
          <item>
-          <widget class="QLabel" name="label_moisture">
+          <widget class="QLabel" name="label_sensor_1">
            <property name="text">
             <string>Moisture</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_moisture"/>
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_1"/>
          </item>
         </layout>
        </item>
        <item>
         <layout class="QHBoxLayout" name="layout_humidity_info">
          <item>
-          <widget class="QLabel" name="label_humidity">
+          <widget class="QLabel" name="label_sensor_2">
            <property name="text">
             <string>Humidity</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_humidity"/>
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
          </item>
         </layout>
        </item>
        <item>
         <layout class="QHBoxLayout" name="layout_temperature_info">
          <item>
-          <widget class="QLabel" name="label_temperature">
+          <widget class="QLabel" name="label_sensor_3">
            <property name="text">
             <string>Temperature</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_temperature"/>
+          <widget class="QDoubleSpinBox" name="doubleSpinBox_3"/>
          </item>
         </layout>
        </item>

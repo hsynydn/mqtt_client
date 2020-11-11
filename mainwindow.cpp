@@ -5,8 +5,10 @@
 
 #include <ctime>
 #include <ctype.h>
-
 #include <stdio.h>
+
+#include <QtSql/QSqlDatabase>
+#include <QtSql/QSqlQuery>
 
 #define QOS         1
 #define TIMEOUT     10000L
@@ -15,16 +17,92 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
 {
     ui->setupUi(this);
 
-    ui->lineEdit_host_name->setText("broker.hivemq.com");
-    ui->lineEdit_broker_port->setText("1883");
+    QSqlDatabase database = QSqlDatabase::addDatabase("QSQLITE");
 
-    ui->listWidget_topic_list->addItem("metosoft/topic_1");
-    ui->listWidget_topic_list->addItem("metosoft/topic_2");
-    ui->listWidget_topic_list->addItem("metosoft/topic_3");
+    QString path = QDir::currentPath() + "/mydb.db";
 
-    ui->comboBox_user->addItem("Nihat Yalman");
-    ui->comboBox_user->addItem("Hüseyin Aydın");
-    ui->comboBox_user->addItem("Ayhan Demirhan");
+    qDebug() << path;
+
+    database.setDatabaseName(path);
+
+    bool retVal = database.open();
+
+    if(retVal){
+
+        qDebug() << "Database Opened";
+
+        QSqlQuery query;
+
+        query.exec("SELECT * FROM Settings");
+
+        while (query.next()) {
+            QString broker_name = query.value(4).toString();
+            QString broker_port = query.value(5).toString();
+
+            ui->lineEdit_host_name->setText(broker_name);
+            ui->lineEdit_broker_port->setText(broker_port);
+        }
+
+        query.exec("SELECT * FROM Topics");
+
+        while (query.next()) {
+            QString topic_name = query.value(1).toString();
+
+            ui->listWidget_topic_list->addItem(topic_name);
+        }
+
+        ui->label_none->setText(ui->listWidget_topic_list->item(0)->text());
+
+        query.exec("SELECT * FROM Operators");
+
+        while (query.next()) {
+            QString operator_name = query.value(1).toString();
+
+            ui->comboBox_user->addItem(operator_name);
+        }
+
+        query.exec("SELECT * FROM Sensors");
+
+        QDoubleSpinBox* sensor_list[3];
+        sensor_list[0] = ui->doubleSpinBox_1;
+        sensor_list[1] = ui->doubleSpinBox_2;
+        sensor_list[2] = ui->doubleSpinBox_3;
+
+        QLabel* sensor_name_list[3];
+        sensor_name_list[0] = ui->label_sensor_1;
+        sensor_name_list[1] = ui->label_sensor_2;
+        sensor_name_list[2] = ui->label_sensor_3;
+
+
+        int counter = 0;
+
+        while(query.next()){
+
+            int max_val = query.value(1).toInt();
+            int min_val = query.value(2).toInt();
+            QString sensor_name = query.value(3).toString();
+
+            sensor_list[counter]->setRange(min_val, max_val);
+            sensor_name_list[counter]->setText(sensor_name);
+
+            counter++;
+        }
+
+
+    }else{
+
+        qDebug() << "Database Connection Failed\n";
+
+        ui->lineEdit_host_name->setText("broker.hivemq.com");
+        ui->lineEdit_broker_port->setText("1883");
+
+        ui->listWidget_topic_list->addItem("metosoft/topic_2");
+        ui->listWidget_topic_list->addItem("metosoft/topic_3");
+
+
+        ui->comboBox_user->addItem("Hüseyin Aydın");
+        ui->comboBox_user->addItem("Ayhan Demirhan");
+    }
 }
 
 MainWindow::~MainWindow()
@@ -34,9 +112,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pushButton_connect_clicked()
 {
-
-    getPayloadAsJson();
-
     broker_address.clear();
     broker_address.insert(broker_address.length(), "tcp://");
     broker_address.insert(broker_address.length(), ui->lineEdit_host_name->text());
@@ -52,7 +127,7 @@ void MainWindow::on_pushButton_connect_clicked()
     MQTTClient_create(&mqttClient,
                       broker_address.toStdString().c_str(),
                       client_id.toStdString().c_str(),
-                      MQTTCLIENT_PERSISTENCE_NONE, NULL);
+                      MQTTCLIENT_PERSISTENCE_DEFAULT, NULL);
 
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
@@ -89,6 +164,9 @@ void MainWindow::on_pushButton_send_clicked()
 
     pubmsg.payload = (void*)(payload.toStdString().c_str());
     pubmsg.payloadlen = strlen(payload.toStdString().c_str());
+
+    qDebug() << "Length of Payload ::: " << pubmsg.payloadlen;
+
     pubmsg.qos = QOS;
     pubmsg.retained = 0;
 
@@ -97,11 +175,13 @@ void MainWindow::on_pushButton_send_clicked()
                               &pubmsg,
                               &token);
 
+    /*
     printf("Waiting for up to %d seconds for publication of %s\n on topic %s for client with ClientID: %s\n",
            (int)(TIMEOUT/1000),
            payload.toStdString().c_str(),
            topic.toStdString().c_str(),
            client_id.toStdString().c_str());
+    */
 
     returnCode = MQTTClient_waitForCompletion(mqttClient, token, TIMEOUT);
 
@@ -121,50 +201,136 @@ void MainWindow::on_MainWindow_destroyed()
 
 QString MainWindow::getPayloadAsJson()
 {
-    time_t now = time(0);
-   // convert now to string form
+
+   time_t now = time(0);
    char* dt = ctime(&now);
    *(dt+24) = '\0';
 
+   QSqlQuery query;
+   query.exec("SELECT * FROM Settings");
+
+   QString serial, version, product;
+   int demo;
+
+   while (query.next()) {
+       serial = query.value(0).toString();
+       version = query.value(1).toString();
+       product = query.value(2).toString();
+       demo = query.value(3).toInt();
+   }
+
    QString message;
-   message.insert(message.length(), "{\n");
-   message.insert(message.length(), "\"product\": \"MQTT Test Application\",\n");
-   message.insert(message.length(), "\"version\": 1.0,\n");
-   message.insert(message.length(), "\"date\": \"");
-   message.insert(message.length(), dt);
-   message.insert(message.length(), "\",\n");
-   message.insert(message.length(), "\"serial\": \"MS00013\",\n");
-   message.insert(message.length(), "\"demo\": \"true\",\n");
 
-   message.insert(message.length(), "\"operator\": {\n");
-   message.insert(message.length(), "\"id\": 12345,\n");
-   message.insert(message.length(), "\"name\": ");
-   message.insert(message.length(), ui->comboBox_user->currentText());
-   message.insert(message.length(), "\",\n");
-   message.insert(message.length(), "\"phones\": \"90-123-45-678\",\n");
-   message.insert(message.length(), "\"email\": [\n");
-   message.insert(message.length(), "\"ny1@example.com\",\n");
-   message.insert(message.length(), "\"ny2@example.com\"\n]\n},\n");
 
-   message.insert(message.length(), "\"sensor\": [\n");
+   message += "{\n";
 
-   message.insert(message.length(), "{\"moisture\" : ");
-   message.insert(message.length(), ui->doubleSpinBox_moisture->text());
-   message.insert(message.length(), "},\n");
+   message += "\"product\": \"";
+   message += product;
+   message += " \",\n";
 
-   message.insert(message.length(), "{\"humidity\" : ");
-   message.insert(message.length(), ui->doubleSpinBox_humidity->text());
-   message.insert(message.length(), "},\n");
+   message += "\"version\": \"";
+   message += version;
+   message += " \",\n";
 
-   message.insert(message.length(), "{\"temperature\" : ");
-   message.insert(message.length(), ui->doubleSpinBox_temperature->text());
-   message.insert(message.length(), "},\n]\n");
+   message += "\"date\": \"";
+   message += dt;
+   message += "\",\n";
 
-   message.insert(message.length(), "}");
+   message += "\"serial\": \"";
+   message += serial;
+   message += "\",\n";
 
-   //qDebug().noquote() << message << "\n";
+   if(demo == 1){
+       message += "\"demo\": \"";
+       message += "true";
+       message += " \",\n";
+   }else{
+       message += "\"demo\": \"";
+       message += "false";
+       message += " \",\n";
+   }
 
-   ui->label_progress_feedback->setText(message);
+   QString selected_operator_name = ui->comboBox_user->currentText();
+   query.exec("SELECT * FROM Operators WHERE fullname = \"" + selected_operator_name + "\";");
+
+   int operator_id;
+   QString fullname;
+   QString password;
+   QString phone;
+   int email_id;
+
+   while (query.next()) {
+
+       operator_id = query.value(0).toInt();
+       qDebug() << operator_id;
+
+       fullname = query.value(1).toString();
+       qDebug() << fullname;
+
+       password = query.value(2).toString();
+       qDebug() << password;
+
+       phone = query.value(3).toString();
+       qDebug() << phone;
+
+       email_id = query.value(5).toInt();
+       qDebug() << email_id;
+   }
+
+
+
+   query.exec("SELECT * FROM Emails WHERE email_id = " + QString::number(email_id) + ";");
+   query.next();
+
+   QString email = query.value(1).toString();
+
+   message += "\"operator\": { ";
+
+   message += "\"id\": \"";
+   message += QString::number(operator_id);
+   message += "\", ";
+
+   message += "\"name\": \"";
+   message += fullname;
+   message += "\", ";
+
+   message += "\"phone\": \"";
+   message += phone;
+   message += "\", ";
+
+   message += "\"email\": [\"";
+   message += email;
+   message += "\"] }, \n";
+
+   message += "\"sensor\": [";
+
+   QString lab_sn1 = ui->label_sensor_1->text();
+   QString lab_sn2 = ui->label_sensor_2->text();
+   QString lab_sn3 = ui->label_sensor_3->text();
+
+   double lab_sn1out = ui->doubleSpinBox_1->value();
+   double lab_sn2out = ui->doubleSpinBox_2->value();
+   double lab_sn3out = ui->doubleSpinBox_3->value();
+
+   message += "{ \"";
+   message += lab_sn1;
+   message += "\" : \"";
+   message += QString::number(lab_sn1out);
+   message += "\"},";
+
+   message += "{ \"";
+   message += lab_sn2;
+   message += "\" : \"";
+   message += QString::number(lab_sn2out);
+   message += "\"},";
+
+   message += "{ \"";
+   message += lab_sn3;
+   message += "\" : \"";
+   message += QString::number(lab_sn3out);
+   message += "\"} ]\n";
+
+   message += "}";
 
    return message;
 }
