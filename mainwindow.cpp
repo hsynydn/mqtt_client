@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "msoft/json.h"
 
 #include <string>
 #include <QtCore>
@@ -164,6 +165,8 @@ void MainWindow::on_MainWindow_destroyed()
 QString MainWindow::getPayloadAsJson()
 {
 
+   JSONFormatter jsonFormatter;
+
    time_t now = time(0);
    char* dt = ctime(&now);
    *(dt+24) = '\0';
@@ -179,27 +182,20 @@ QString MainWindow::getPayloadAsJson()
    QString message;
 
 
-   message += "{\n";
+   jsonFormatter.insertLabel("product");
+   jsonFormatter.insertValue(setting.product);
 
-   message += "\"product\": \"";
-   message += setting.product;
-   message += " \",\n";
+   jsonFormatter.insertLabel("version");
+   jsonFormatter.insertValue(setting.version);
 
-   message += "\"version\": \"";
-   message += setting.version;
-   message += " \",\n";
+   jsonFormatter.insertLabel("date");
+   jsonFormatter.insertValue(dt);
 
-   message += "\"date\": \"";
-   message += dt;
-   message += "\",\n";
+   jsonFormatter.insertLabel("serial");
+   jsonFormatter.insertValue(setting.serial);
 
-   message += "\"serial\": \"";
-   message += setting.serial;
-   message += "\",\n";
-
-   message += "\"demo\": \"";
-   message += QString::number(setting.demo);
-   message += " \",\n";
+   jsonFormatter.insertLabel("demo");
+   jsonFormatter.insertValue(QString::number(setting.demo));
 
    QString operatorName = ui->comboBox_user->currentText();
 
@@ -221,23 +217,26 @@ QString MainWindow::getPayloadAsJson()
         email = dbManager.getEmail();
    }
 
-   message += "\"operator\": { ";
+   jsonFormatter.insertLabel("operator");
 
-   message += "\"id\": \"";
-   message += QString::number(op.id);
-   message += "\", ";
+   jsonFormatter.openMultipleValue();
 
-   message += "\"name\": \"";
-   message += op.fullname;
-   message += "\", ";
+   jsonFormatter.insertLabel("id");
+   jsonFormatter.insertValue(QString::number(op.id));
 
-   message += "\"phone\": \"";
-   message += op.phone;
-   message += "\", ";
+   jsonFormatter.insertLabel("name");
+   jsonFormatter.insertValue(op.fullname);
 
-   message += "\"email\": [\"";
-   message += email.email;
-   message += "\"] }, \n";
+   jsonFormatter.insertLabel("phone");
+   jsonFormatter.insertValue(op.phone);
+
+   jsonFormatter.insertLabel("email");
+
+   jsonFormatter.openArray();
+   jsonFormatter.insertValue(email.email);
+   jsonFormatter.closeArray();
+
+   jsonFormatter.closeMultipleValue();
 
    message += "\"sensor\": [";
 
@@ -249,25 +248,27 @@ QString MainWindow::getPayloadAsJson()
    double lab_sn2out = ui->doubleSpinBox_2->value();
    double lab_sn3out = ui->doubleSpinBox_3->value();
 
-   message += "{ \"";
-   message += lab_sn1;
-   message += "\" : \"";
-   message += QString::number(lab_sn1out);
-   message += "\"},";
+   jsonFormatter.insertLabel("sensor");
+   jsonFormatter.openArray();
 
-   message += "{ \"";
-   message += lab_sn2;
-   message += "\" : \"";
-   message += QString::number(lab_sn2out);
-   message += "\"},";
+   jsonFormatter.openMultipleValue();
+   jsonFormatter.insertLabel(lab_sn1);
+   jsonFormatter.insertValue(QString::number(lab_sn1out));
+   jsonFormatter.closeMultipleValue();
 
-   message += "{ \"";
-   message += lab_sn3;
-   message += "\" : \"";
-   message += QString::number(lab_sn3out);
-   message += "\"} ]\n";
+   jsonFormatter.openMultipleValue();
+   jsonFormatter.insertLabel(lab_sn2);
+   jsonFormatter.insertValue(QString::number(lab_sn2out));
+   jsonFormatter.closeMultipleValue();
 
-   message += "}";
+   jsonFormatter.openMultipleValue();
+   jsonFormatter.insertLabel(lab_sn3);
+   jsonFormatter.insertValue(QString::number(lab_sn3out));
+   jsonFormatter.closeMultipleValue();
 
-   return message;
+   jsonFormatter.closeArray();
+
+   qDebug().noquote() << "~~~~~~~~~~~~~~\n" << jsonFormatter.getMessage();
+
+   return jsonFormatter.getMessage();
 }

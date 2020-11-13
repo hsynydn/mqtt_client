@@ -13,7 +13,8 @@ LIBS += "C:/Users/cehsy/Documents/metosoft/source-code/MetosoftClientApp/paho-mq
 SOURCES += \
     dbManagement.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    msoft/json.cpp
 
 HEADERS += \
     MQTTAsync.h \
@@ -24,7 +25,8 @@ HEADERS += \
     MQTTSubscribeOpts.h \
     customTypes.h \
     dbManagement.h \
-    mainwindow.h
+    mainwindow.h \
+    msoft/json.h
 
 FORMS += \
     mainwindow.ui
