@@ -11,6 +11,7 @@ CONFIG += c++11
 LIBS += "C:/Users/cehsy/Documents/metosoft/source-code/MetosoftClientApp/paho-mqtt3c.dll"
 
 SOURCES += \
+    dbManagement.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -21,6 +22,8 @@ HEADERS += \
     MQTTProperties.h \
     MQTTReasonCodes.h \
     MQTTSubscribeOpts.h \
+    customTypes.h \
+    dbManagement.h \
     mainwindow.h
 
 FORMS += \

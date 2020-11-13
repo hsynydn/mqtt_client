@@ -17,91 +17,61 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
 {
     ui->setupUi(this);
 
-    QSqlDatabase database = QSqlDatabase::addDatabase("QSQLITE");
+    QDoubleSpinBox* sensorValues[3];
+    sensorValues[0] = ui->doubleSpinBox_1;
+    sensorValues[1] = ui->doubleSpinBox_2;
+    sensorValues[2] = ui->doubleSpinBox_3;
 
-    QString path = QDir::currentPath() + "/mydb.db";
+    QLabel* sensorLabels[3];
+    sensorLabels[0] = ui->label_sensor_1;
+    sensorLabels[1] = ui->label_sensor_2;
+    sensorLabels[2] = ui->label_sensor_3;
 
-    qDebug() << path;
+    dbManager = *(new DBManager());
+    dbManager.connect();
 
-    database.setDatabaseName(path);
+    dbManager.run_query(QUERY_SETTINGS);
 
-    bool retVal = database.open();
+    Setting setting;
 
-    if(retVal){
+    if (dbManager.hasNext()) {
+        setting = dbManager.getSetting();
+    }
 
-        qDebug() << "Database Opened";
+    ui->lineEdit_host_name->setText(setting.brokerName);
+    ui->lineEdit_broker_port->setText(QString::number(setting.brokerPort));
 
-        QSqlQuery query;
+    dbManager.run_query(QUERY_TOPICS);
 
-        query.exec("SELECT * FROM Settings");
+    Topic topic;
 
-        while (query.next()) {
-            QString broker_name = query.value(4).toString();
-            QString broker_port = query.value(5).toString();
+    while (dbManager.hasNext()) {
+        topic = dbManager.getTopic();
+        ui->listWidget_topic_list->addItem(topic.name);
+    }
 
-            ui->lineEdit_host_name->setText(broker_name);
-            ui->lineEdit_broker_port->setText(broker_port);
-        }
+    dbManager.run_query(QUERY_OPERATORS);
 
-        query.exec("SELECT * FROM Topics");
+    Operator op;
 
-        while (query.next()) {
-            QString topic_name = query.value(1).toString();
+    while (dbManager.hasNext()) {
+        op = dbManager.getOperator();
+        ui->comboBox_user->addItem(op.fullname);
+    }
 
-            ui->listWidget_topic_list->addItem(topic_name);
-        }
+    dbManager.run_query(QUERY_SENSORS);
 
-        ui->label_none->setText(ui->listWidget_topic_list->item(0)->text());
+    Sensor sensor;
 
-        query.exec("SELECT * FROM Operators");
+    int counter = 0;
+    while (dbManager.hasNext()) {
 
-        while (query.next()) {
-            QString operator_name = query.value(1).toString();
+        sensor = dbManager.getSensor();
 
-            ui->comboBox_user->addItem(operator_name);
-        }
+        sensorValues[counter]->setRange(sensor.minVal, sensor.maxVal);
+        sensorLabels[counter]->setText(sensor.name);
 
-        query.exec("SELECT * FROM Sensors");
-
-        QDoubleSpinBox* sensor_list[3];
-        sensor_list[0] = ui->doubleSpinBox_1;
-        sensor_list[1] = ui->doubleSpinBox_2;
-        sensor_list[2] = ui->doubleSpinBox_3;
-
-        QLabel* sensor_name_list[3];
-        sensor_name_list[0] = ui->label_sensor_1;
-        sensor_name_list[1] = ui->label_sensor_2;
-        sensor_name_list[2] = ui->label_sensor_3;
-
-
-        int counter = 0;
-
-        while(query.next()){
-
-            int max_val = query.value(1).toInt();
-            int min_val = query.value(2).toInt();
-            QString sensor_name = query.value(3).toString();
-
-            sensor_list[counter]->setRange(min_val, max_val);
-            sensor_name_list[counter]->setText(sensor_name);
-
-            counter++;
-        }
-
-
-    }else{
-
-        qDebug() << "Database Connection Failed\n";
-
-        ui->lineEdit_host_name->setText("broker.hivemq.com");
-        ui->lineEdit_broker_port->setText("1883");
-
-        ui->listWidget_topic_list->addItem("metosoft/topic_2");
-        ui->listWidget_topic_list->addItem("metosoft/topic_3");
-
-
-        ui->comboBox_user->addItem("Hüseyin Aydın");
-        ui->comboBox_user->addItem("Ayhan Demirhan");
+        counter++;
     }
 }
 
@@ -175,14 +145,6 @@ void MainWindow::on_pushButton_send_clicked()
                               &pubmsg,
                               &token);
 
-    /*
-    printf("Waiting for up to %d seconds for publication of %s\n on topic %s for client with ClientID: %s\n",
-           (int)(TIMEOUT/1000),
-           payload.toStdString().c_str(),
-           topic.toStdString().c_str(),
-           client_id.toStdString().c_str());
-    */
-
     returnCode = MQTTClient_waitForCompletion(mqttClient, token, TIMEOUT);
 
     printf("Message with delivery token %d delivered\n", token);
@@ -206,17 +168,12 @@ QString MainWindow::getPayloadAsJson()
    char* dt = ctime(&now);
    *(dt+24) = '\0';
 
-   QSqlQuery query;
-   query.exec("SELECT * FROM Settings");
+   dbManager.run_query(QUERY_SETTINGS);
 
-   QString serial, version, product;
-   int demo;
+   Setting setting;
 
-   while (query.next()) {
-       serial = query.value(0).toString();
-       version = query.value(1).toString();
-       product = query.value(2).toString();
-       demo = query.value(3).toInt();
+   if (dbManager.hasNext()) {
+       setting = dbManager.getSetting();
    }
 
    QString message;
@@ -225,11 +182,11 @@ QString MainWindow::getPayloadAsJson()
    message += "{\n";
 
    message += "\"product\": \"";
-   message += product;
+   message += setting.product;
    message += " \",\n";
 
    message += "\"version\": \"";
-   message += version;
+   message += setting.version;
    message += " \",\n";
 
    message += "\"date\": \"";
@@ -237,69 +194,49 @@ QString MainWindow::getPayloadAsJson()
    message += "\",\n";
 
    message += "\"serial\": \"";
-   message += serial;
+   message += setting.serial;
    message += "\",\n";
 
-   if(demo == 1){
-       message += "\"demo\": \"";
-       message += "true";
-       message += " \",\n";
-   }else{
-       message += "\"demo\": \"";
-       message += "false";
-       message += " \",\n";
+   message += "\"demo\": \"";
+   message += QString::number(setting.demo);
+   message += " \",\n";
+
+   QString operatorName = ui->comboBox_user->currentText();
+
+   dbManager.run_query(DBManager::FX_QUERY_OPERATOR_BY_NAME(operatorName));
+
+   Operator op;
+
+   if (dbManager.hasNext()) {
+
+        op = dbManager.getOperator();
+
    }
 
-   QString selected_operator_name = ui->comboBox_user->currentText();
-   query.exec("SELECT * FROM Operators WHERE fullname = \"" + selected_operator_name + "\";");
+   dbManager.run_query(DBManager::FX_QUERY_EMAIL_BY_ID(op.emailId));
 
-   int operator_id;
-   QString fullname;
-   QString password;
-   QString phone;
-   int email_id;
+   Email email;
 
-   while (query.next()) {
-
-       operator_id = query.value(0).toInt();
-       qDebug() << operator_id;
-
-       fullname = query.value(1).toString();
-       qDebug() << fullname;
-
-       password = query.value(2).toString();
-       qDebug() << password;
-
-       phone = query.value(3).toString();
-       qDebug() << phone;
-
-       email_id = query.value(5).toInt();
-       qDebug() << email_id;
+   if (dbManager.hasNext()) {
+        email = dbManager.getEmail();
    }
-
-
-
-   query.exec("SELECT * FROM Emails WHERE email_id = " + QString::number(email_id) + ";");
-   query.next();
-
-   QString email = query.value(1).toString();
 
    message += "\"operator\": { ";
 
    message += "\"id\": \"";
-   message += QString::number(operator_id);
+   message += QString::number(op.id);
    message += "\", ";
 
    message += "\"name\": \"";
-   message += fullname;
+   message += op.fullname;
    message += "\", ";
 
    message += "\"phone\": \"";
-   message += phone;
+   message += op.phone;
    message += "\", ";
 
    message += "\"email\": [\"";
-   message += email;
+   message += email.email;
    message += "\"] }, \n";
 
    message += "\"sensor\": [";

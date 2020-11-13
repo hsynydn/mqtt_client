@@ -4,6 +4,7 @@
 #include "ui_mainwindow.h"
 #include <QMainWindow>
 
+#include "dbManagement.h"
 #include "MQTTClient.h"
 
 QT_BEGIN_NAMESPACE
@@ -16,6 +17,8 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
+
+    DBManager dbManager;
 
     QString broker_address;
     QString client_id;
