@@ -10,7 +10,7 @@
 #include <QtSql/QSqlDatabase>
 #include <QtSql/QSqlQuery>
 
-#include "customTypes.h"
+#include "msoft/customTypes.h"
 
 #define QUERY_OPERATORS "SELECT * FROM Operators;"
 #define QUERY_TOPICS "SELECT * FROM Topics;"

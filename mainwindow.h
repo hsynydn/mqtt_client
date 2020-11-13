@@ -4,8 +4,8 @@
 #include "ui_mainwindow.h"
 #include <QMainWindow>
 
-#include "dbManagement.h"
-#include "MQTTClient.h"
+#include "msoft/dbManagement.h"
+#include "paho/MQTTClient.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }

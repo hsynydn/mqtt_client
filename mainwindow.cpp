@@ -238,8 +238,6 @@ QString MainWindow::getPayloadAsJson()
 
    jsonFormatter.closeMultipleValue();
 
-   message += "\"sensor\": [";
-
    QString lab_sn1 = ui->label_sensor_1->text();
    QString lab_sn2 = ui->label_sensor_2->text();
    QString lab_sn3 = ui->label_sensor_3->text();
